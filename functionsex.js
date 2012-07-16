@@ -23,11 +23,11 @@ Array.prototype.inOf=function(val,from){
    return i+1;
 }
 
-Array.prototype.average=function(p){
-   if(p==undefined || !p) var s=0;
+Array.prototype.average=function(mode){
+   if(!mode) var s=0;
    else var s=1;
    for(var i=0,l=this.length;i<l;i++){
-      if(p==undefined || !p) s=s+parseFloat(this[i]);
+      if(!mode) s=s+parseFloat(this[i]);
       else s=s*parseFloat(this[i]);
    }
    return (s/this.length);
@@ -79,23 +79,19 @@ function isObject(o){
    return Object.prototype.toString.call(o)=='[object Object]';
 }
 
-function getsett(text,ss,si,es){
-   if(text==undefined) return undefined;
-   if(ss==undefined) return undefined;
-   if(es==undefined) return undefined;
-   var getsett_i1=0;
-   var getsett_i2=0;
-   var text1=text.toLowerCase();
-   ss=ss.toLowerCase();
-   es=es.toLowerCase();
-   if(ss!=='') getsett_i1=text1.indexOf(ss,si);
-   else getsett_i1=si;
-   if(getsett_i1==-1) return undefined;
-   if(es!=='') getsett_i2=text1.indexOf(es,getsett_i1+ss.length);
-   else getsett_i2=text1.length;
-   if(getsett_i2==-1) return undefined;
-   return text.slice(getsett_i1+ss.length,getsett_i2);
-
+String.prototype.get=function(pref,end,from){
+   if(!this || !pref || !suf) return '';
+   var i1=0, i2=0, text=this.toLowerCase();
+   pref=pref.toLowerCase();
+   end=end.toLowerCase();
+   from=from||0;
+   if(pref) i1=text.indexOf(pref,from);
+   else i1=from;
+   if(i1==-1) return '';
+   if(end) i2=text.indexOf(end,i1+pref.length);
+   else i2=text.length;
+   if(i2==-1) return '';
+   return this.slice(i1+pref.length,i2);
 }
 
 function getms(){
@@ -110,26 +106,25 @@ Array.prototype.unique=function(){
 	return tmp_arr;
 }
 
-function reRound(val,as,float){
-   if(as==undefined) as=360;
-   if(Math.abs(val)<as) return val;
-   var s=val/as;
-   s=(s-Math.floor(s))*as;
-   if(float!==undefined || !float) s=Math.round(s);
+function reRound(val,to,asfloat){
+   to=to||100;
+   if(Math.abs(val)<to) return val;
+   var s=val/to;
+   s=(s-Math.floor(s))*to;
+   if(!asfloat) s=Math.round(s);
    return s;
 }
 function reAngle(val){
    if(isString(val)) val=parseFloat(val);
-   val=reRound(val,360);
+   val=reRound(val,360,true);
    if(val<=0) val+=360;
    return val;
 }
 
-function group2val(groupObj,what){
-   what=what||'value';
-   for(var i=0;i<groupObj.length;i++){
-      if(groupObj[i].type=='radio' && groupObj[i].checked) return groupObj[i][what];
-      else if(groupObj[i].type!=='radio') return groupObj[i][what];
+function getChecked(obj,whatreturn){
+   whatreturn=whatreturn||'value';
+   for(var i=0;i<obj.length;i++){
+      if(obj[i].checked) return obj[i][whatreturn];
    }
    return undefined;
 }
