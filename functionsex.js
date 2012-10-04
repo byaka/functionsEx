@@ -1,4 +1,4 @@
-﻿var None=undefined;
+var None=undefined;
 var rad2deg=180/Math.PI;
 var deg2rad=Math.PI/180;
 /*============================================================*/
@@ -8,12 +8,21 @@ function isString(o){return Object.prototype.toString.call(o)=='[object String]'
 function isObject(o){return Object.prototype.toString.call(o)=='[object Object]'}
 function isNumber(o){return Object.prototype.toString.call(o)=='[object Number]'}
 /*============================================================*/
-function objMake(key,val){
+if(!Object.keys){
+   Object.keys=function(o){
+      var tarr=[];
+      forMe(o,function(key){tarr.push(key)});
+      return tarr;
+   }
+}
+
+Object.make=function (key,val){
    var s={};
    key=isArray(key)?key:[key];
    for(var i=0,l=key.length;i<l;i++){
       if(isArray(val)) s[key[i]]=val[i];
-      else  s[key[i]]=val;
+      else if(val=='[]') s[key[i]]=[];
+      else s[key[i]]=val;
    }
    return s;
 }
@@ -34,18 +43,17 @@ function callMe(func,args,namespc){
    else if(isFunction(namespc[func])) return namespc[func](args);
 }
 
-function cloneMe(obj,keep){
+function cloneMe(obj,keep,only){
 //this method has problems with functions and recursion. use 'keep' for solve this
    if(!obj) return '';
-   var tarr={};
-   if(keep) for(var i=0,l=keep.length;i<l;i++){
-      tarr[keep[i]]=obj[keep[i]];
-      delete obj[keep[i]];
-   }
-   var tout=JSON.parse(JSON.stringify(obj));
-   if(keep) for(var i=0,l=keep.length;i<l;i++){
-      tout[keep[i]]=tarr[keep[i]];
-      obj[keep[i]]=tarr[keep[i]];
+   if(!only && !keep) var tout=JSON.parse(JSON.stringify(obj));
+   else{
+      if(isArray(obj)) var tout=[];
+      else if(isObject(obj)) var tout={};
+      forMe(obj,function(key,val){
+         if(keep && keep.inOf(key)) tout[key]=val;
+         else if((only && only.inOf(key)) || !only) tout[key]=JSON.parse(JSON.stringify(val));
+      })
    }
    return tout;
 }
@@ -64,15 +72,6 @@ function forMe(o,callback,sameorder){
    }
 }
 
-function byIndex(o,ind){
-   var i=0;
-   for(var k in o){
-      if(!o.hasOwnProperty(k)) continue;
-      if(i==ind) return k;
-      i++;
-   }
-}
-
 function getms(){return new Date().getTime()}
 
 function reRound(val,to,asfloat){
@@ -83,6 +82,7 @@ function reRound(val,to,asfloat){
    if(!asfloat) s=Math.round(s);
    return s;
 }
+
 function reAngle(val){
    if(isString(val)) val=parseFloat(val);
    val=reRound(val,360,true);
