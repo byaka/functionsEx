@@ -16,6 +16,18 @@ if(!Object.keys){
    }
 }
 
+Array.prototype.fromObj=function(key){
+   var tarr=[];
+   forMe(this,function(o){
+      if(o[key]) tarr.push(o[key]);
+   })
+   return tarr;
+}
+
+Array.prototype.last=function(){
+   return this[this.length-1];
+}
+
 Object.make=function (key,val){
    var s={};
    key=isArray(key)?key:[key];
