@@ -164,6 +164,8 @@ Boolean.prototype.bool=function(){return (this==true?true:false)}
 
 String.prototype.capital=function(){return this.slice(0,1).toUpperCase()+this.slice(1).toLowerCase()}
 
+String.prototype.splice=function(start,end){return this.split('').splice(start,end).join('')}
+
 String.prototype.bool=function(patterns){
    patterns=patterns||['true','1','yes','checked'];
    if(patterns.inOf(this.toLowerCase())) return true;

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import string,sys,sha,zipfile,os,datetime,time,json,hmac,hashlib,math,random
 import logging as log
-log.basicConfig(format=u'%(levelname)s: [%(filename)s:%(lineno)d][%(asctime)s] %(message)s',level=log.DEBUG)
+log.basicConfig(format=u'%(levelname)s: [%(asctime)s] %(message)s',level=log.DEBUG)
 import typehack
 #with typehack we can add methods to build-in classes, as in JS!
 #see code.google.com/p/typehack/source/browse/doc/readme.txt
