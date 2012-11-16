@@ -71,20 +71,46 @@ function cloneMe(obj,keep,only){
 }
 
 function forMe(o,callback,sameorder){
+   var breacked=false;
    if(isArray(o)){
       for(var i=0,l=o.length;i<l;i++){
-         if(callback(o[i],i,o)===false) break;
+         if(callback(o[i],i,o)===false){breacked=true;break;}
       }
    }else if(isObject(o)){
       for(i in o){
          if(!o.hasOwnProperty(i)) continue;
-         else if(!sameorder && callback(i,o[i],o)===false) break;
-         else if(sameorder && callback(o[i],i,o)===false) break;
+         else if(!sameorder && callback(i,o[i],o)===false){breacked=true;break;}
+         else if(sameorder && callback(o[i],i,o)===false){breacked=true;break;}
       }
    }
+   return breacked;
 }
 
 function getms(){return new Date().getTime()}
+
+function eqMe(x,y,as,err){
+   var res=false;
+   err=err ||0;
+   as=as ||'==';
+   if(err && (as=='==' || as=='!=')){
+      x=parseFloat(x);
+      y=parseFloat(y);
+      if(!isArray(err)){
+         if(as=='==') res=(Math.abs(y-x)<=err);
+         else if(as=='!=') res=(Math.abs(y-x)>err);
+      }else{
+         if(as=='==') res=((y-x>=0 && y-x<=err[0]) || (x-y>=0 && x-y<=err[1]));
+         else if(as=='!=') res=(Math.abs(y-x)>err);
+      }
+   }else{
+      if(as=='==') res=(x==y);
+      else if(as=='!=') res=(x!=y);
+      else if(as=='<=') res=(x<=y);
+      else if(as=='>=') res=(x>=y);
+   }
+//   console.assert(!res,y-x)
+   return res;
+}
 
 function reRound(val,to,asfloat){
    to=to||100;
@@ -131,9 +157,11 @@ Array.prototype.max=function(){return Math.max.apply(Math,this)}
 
 Array.prototype.min=function(){return Math.min.apply(Math,this)}
 
-Array.prototype.inObj=function(key,val,returnAsObj){
+Array.prototype.inObj=function(key,val,returnAsObj,startIndex){
 //==find item on array of objects by key:val on this objects
-   for(var i=0,l=this.length;i<l;i++){
+   startIndex=startIndex ||0;
+   if(startIndex>=this.length) return undefined;
+   for(var i=startIndex,l=this.length;i<l;i++){
       if(!isObject(this[i])) continue;
       if(this[i][key]==val && !returnAsObj) return i+1;
       else if(this[i][key]==val) return this[i];
