@@ -72,7 +72,8 @@ function cloneMe(obj,keep,only){
 
 function forMe(o,callback,sameorder){
    var breacked=false;
-   if(isArray(o)){
+   if(!o) return undefined;
+   if(isArray(o) || o.jquery){
       for(var i=0,l=o.length;i<l;i++){
          if(callback(o[i],i,o)===false){breacked=true;break;}
       }
