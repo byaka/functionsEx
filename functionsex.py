@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import string, sys, traceback, zipfile, os, datetime, time, hmac, hashlib, math, random, re, copy, urllib2, urllib, types, decimal, inspect, subprocess, collections, _ctypes, ctypes, imp, shutil, itertools, functools, timeit, code, binascii, tempfile, errno  # noqa: E501, F401
+import string, sys, traceback, zipfile, os, datetime, time, hmac, hashlib, math, random, re, copy, urllib2, urllib, types, decimal, inspect, subprocess, collections, _ctypes, ctypes, imp, shutil, itertools, functools, timeit, code, binascii, tempfile, errno, calendar, signal, atexit  # noqa: E501, F401
 try:
    import simplejson as json
 except ImportError: import json
@@ -34,7 +34,11 @@ global true, false, none, null, Null, NULL, INFINITY, infinity, Infinity
 true=True
 false=False
 none=None
-NULL=Null=null=object()
+
+class NullUnique(object):
+   def __str__(self):
+      return 'Null(unique)'
+NULL=Null=null=NullUnique()
 
 INFINITY=Infinity=infinity=float('Inf')
 
@@ -404,8 +408,9 @@ def bind(f, defaultsUpdate=None, globalsUpdate=None, name=None):
 
 class ErrorHandler(object):
    __metaclass__=Singleton
+
    def __init__(self, cb=None, passErrorObjectToCB=False):
-      self.cb=cb or self.__cbDefault
+      self.cb=cb or self.cbDefault
       self.passErrorObjectToCB=passErrorObjectToCB
       sys.excepthook=self.__hook
 
@@ -418,7 +423,8 @@ class ErrorHandler(object):
          errStr=''.join(traceback.format_exception(*errObj))
          self.cb(errStr)
 
-   def __cbDefault(self, err):
+   @classmethod
+   def cbDefault(cls, err):
       isTerm=consoleIsTerminal()
       if isTerm:
          err=consoleColor.bold+consoleColor.red+err+consoleColor.end
@@ -430,7 +436,7 @@ class ErrorHandler(object):
          sys.exit(1)
 
    @classmethod
-   def disable(self):
+   def disable(cls):
       sys.excepthook=sys.__excepthook__
 
 def selfInfo(step=-2):
@@ -848,7 +854,7 @@ def isString(var):
 isStr=isString
 
 def isBool(var):
-   return (var is True or var is False)
+   return isinstance(var, bool)
 
 def isNum(var):
    return (var is not True) and (var is not False) and isinstance(var, (int, float, long, complex, decimal.Decimal))
@@ -1056,6 +1062,17 @@ def dateComp(date, datewith=None, f='%d/%m/%Y %H:%M:%S'):
    dd=date1-date2
    return dd
 dateDiff=dateComp
+
+def dateAddMonth(date=None, n=1):
+   date=date or datetime.datetime.now()
+   new_year=date.year
+   new_month=date.month+n
+   if new_month>12:
+      new_year+=1
+      new_month-=12
+   last_day_of_month=calendar.monthrange(new_year, new_month)[1]
+   new_day=min(date.day, last_day_of_month)
+   return date.replace(year=new_year, month=new_month, day=new_day)
 
 def dateIncress(wait, f='%d.%m.%Y'):
    #incress date by given seconds
@@ -2106,6 +2123,49 @@ def yaSend(login, password, to, text, subject='', attach=[]):
 
 global gmail
 gmail=magicDict({'send':gmailSend})
+#===================================
+# usage example
+# createSSLTunnel(6117, 6017, sslCert='/home/sslCert/screendesk_io.chained.crt', sslKey='/home/sslCert/screendesk_io.key') or sys.exit(0)
+
+def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_configPath='/home/sslCert/', stunnel_exec='stunnel4', stunnel_configSample='/home/sslCert/stunnel_sample.conf', stunnel_sslAllow='all', stunnel_sslOptions='-NO_SSLv2 -NO_SSLv3', stunnel_logLevel=4, stunnel_logFile='/home/python/logs/stunnel_%s_%s-%s.log', name=None):
+   print 'Creating tunnel (localhost:%s --> localhost:%s)..'%(port_https, port_http)
+   name=name or os.path.splitext(os.path.basename(sys.argv[0]))[0]
+   configSample=fileGet(stunnel_configSample)
+   stunnel_sslOptions='\n'.join(['options = '+s for s in stunnel_sslOptions.split(' ') if s])
+   config={'name':name, 'logLevel':stunnel_logLevel, 'sslAllow':stunnel_sslAllow, 'sslOptions':stunnel_sslOptions, 'sslCert':sslCert, 'sslKey':sslKey, 'portHttps':port_https, 'portHttp':port_http}
+   config=configSample%config
+   configPath=stunnel_configPath+('stunnel_%s_%s-%s.conf'%(name, port_https, port_http))
+   logPath=stunnel_logFile%(name, port_https, port_http)
+   fileWrite(configPath, config)
+   stunnel=subprocess.Popen([stunnel_exec, configPath], stderr=open(logPath, "w"))
+   time.sleep(1)
+   if stunnel.poll():  #error
+      s=fileGet(logPath)
+      s='[!] '+strGet(s, '[!]', '')
+      print '!!! ERROR creating tunnel\n', s
+      return False
+   #
+   def closeSSLTunnel():
+      try: os.system('pkill -f "%s %s"'%(stunnel_exec, configPath))
+      except: pass  # noqa
+   atexit.register(closeSSLTunnel)
+   #
+   def tFunc(sigId, stack, self_close=closeSSLTunnel, old=None):
+      self_close()
+      if old is not None:
+         old(sigId, stack)
+   for s in (signal.SIGTERM, signal.SIGINT):
+      old=signal.getsignal(s)
+      if not isFunction(old): old=None
+      signal.signal(s, bind(tFunc, {'old':old}))
+   # def checkSSLTunnel():
+   #    badPatterns=['Connection rejected: too many clients']
+   #    while True:
+   #       time.sleep(3)
+   #       #! Здесь нужно проверять лог на наличие критических ошибок
+   #       stunnelLog=fileGet(logPath)
+   # thread_checkSSLTunnel=threading.Thread(target=checkSSLTunnel).start()
+   return stunnel
 #===================================
 def intersectWord(s, arr):
    s=s.lower()
