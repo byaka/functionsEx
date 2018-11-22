@@ -2152,11 +2152,12 @@ def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_config
    #
    def tFunc(sigId, stack, self_close=closeSSLTunnel, old=None):
       self_close()
-      if old is not None:
+      if isFunction(old):
          old(sigId, stack)
+      else:
+         sys.exit()
    for s in (signal.SIGTERM, signal.SIGINT):
       old=signal.getsignal(s)
-      if not isFunction(old): old=None
       signal.signal(s, bind(tFunc, {'old':old}))
    # def checkSSLTunnel():
    #    badPatterns=['Connection rejected: too many clients']
