@@ -2128,7 +2128,7 @@ gmail=magicDict({'send':gmailSend})
 # createSSLTunnel(6117, 6017, sslCert='/home/sslCert/screendesk_io.chained.crt', sslKey='/home/sslCert/screendesk_io.key') or sys.exit(0)
 
 def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_configPath='/home/sslCert/', stunnel_exec='stunnel4', stunnel_configSample='/home/sslCert/stunnel_sample.conf', stunnel_sslAllow='all', stunnel_sslOptions='-NO_SSLv2 -NO_SSLv3', stunnel_logLevel=4, stunnel_logFile='/home/python/logs/stunnel_%s_%s-%s.log', name=None):
-   print 'Creating tunnel (localhost:%s --> localhost:%s)..'%(port_https, port_http)
+   print 'Creating tunnel (HTTPS:%s --> HTTP:%s)..'%(port_https, port_http)
    name=name or os.path.splitext(os.path.basename(sys.argv[0]))[0]
    configSample=fileGet(stunnel_configSample)
    stunnel_sslOptions='\n'.join(['options = '+s for s in stunnel_sslOptions.split(' ') if s])
@@ -2154,6 +2154,7 @@ def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_config
       self_close()
       if old is not None:
          old(sigId, stack)
+      sys.exit(0)
    for s in (signal.SIGTERM, signal.SIGINT):
       old=signal.getsignal(s)
       if not isFunction(old): old=None
