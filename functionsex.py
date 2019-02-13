@@ -22,7 +22,17 @@ from operator import xor
 from itertools import izip, izip_longest, starmap, imap, chain, combinations, permutations  # noqa: E501, F401
 from numbers import Number
 from collections import Set, Mapping, deque, defaultdict, Counter, OrderedDict, namedtuple  # noqa: E501, F401
+
+import smtplib, email
+from email.MIMEText import MIMEText
+from email.MIMEBase import MIMEBase
+from email.MIMEImage import MIMEImage
+from email.mime.audio import MIMEAudio
+from email.mime.application import MIMEApplication
+from email import encoders
+
 timetime=time.time
+datetime_now=datetime.datetime.now
 
 mysqlEscaper=None  # библиотека pymysql блокирует патчинг через gevent, лучше импортирвоать ее на месте
 
@@ -157,6 +167,30 @@ def ClassFactory(base, extend, fixPrivateAttrs=True):
       attrs['__delattr__']=tFunc_delattr
    cls=type(name, extend, attrs)
    return cls
+#===================================
+# https://stackoverflow.com/a/40784706
+# class Circularlist(object):
+#    def __init__(self, size):
+#       self.index = 0
+#       self.size = size
+#       self._data = []
+
+#    def append(self, value):
+#       if len(self._data) == self.size:
+#          self._data[self.index] = value
+#       else:
+#          self._data.append(value)
+#       self.index = (self.index + 1) % self.size
+
+#    def __getitem__(self, key):
+#       """Get element by index, relative to the current index"""
+#       if len(self._data) == self.size:
+#          return(self._data[(key + self.index) % self.size])
+#       else:
+#          return(self._data[key])
+
+#    def __repr__(self):
+#       return self._data.__repr__() + ' (' + str(len(self._data))+' items)'
 #===================================
 class Singleton(type):
    _instances={}
@@ -1859,6 +1893,13 @@ def arrUnique(arr, key=None):
    return tArr1
 ###list.unique=arrUnique
 
+def setsSymDifference(*objs):
+   # calc symmetric-difference between MULTIPLE sets
+   # this equivalent for `(o1|o2|o3).difference((o1&o2),(o2&o3), (o1&o3))`
+   r=objs[0].union(*objs[1:])
+   r.difference_update(*(o1&o2 for o1,o2 in combinations(objs, 2)))
+   return r
+
 def oGet(o, key, default=None):
    #get val by key from object(list,dict), or return <default> if key not exist
    try: return o[key]
@@ -2042,55 +2083,50 @@ def inOf(o, v):
          return (v in o)
       except: return False
 #===================================
-def sendmail(p={}):
+def sendmail(**p):
    p=magicDict(p)
-   import smtplib, email
-   from email.MIMEText import MIMEText
-   from email.MIMEBase import MIMEBase
-   from email.MIMEImage import MIMEImage
-   from email.mime.audio import MIMEAudio
-   from email.mime.application import MIMEApplication
-   from email import Encoders
+   _login=p.get('login', p.get('user', ''))
+   _password=p.get('password', p.get('passwd', ''))
+   assert _login and _password
    msg=email.MIMEMultipart.MIMEMultipart()
-   msg['From']=oGet(p, 'from', oGet(p, 'login', oGet(p, 'user', '')))
+   msg['From']=p.get('from', _login)
    # regExp_splitEmail=re.compile("[,\s]", re.U)
    # msg['To']=email.Utils.COMMASPACE.join(regExp_splitEmail.split(p.to) if isString(p.to) else p.to)
    # msg['To']= p.to.split(',') if isString(p.to) else p.to
    if isString(p.to):
       p.to=p.to.split(',')
-   # print_rd(msg['To'])
-   msg['Subject']=oGet(p, 'subject', oGet(p, 'title', ''))
-   #attach body
-   # msg.attach(MIMEText(oGet(p, 'body', oGet(p, 'text', '')), oGet(p, 'mime', 'plain'), "utf-8"))
-   msg.attach(MIMEText(oGet(p, 'body', oGet(p, 'text', '')), oGet(p, 'mime', 'html'), "utf-8"))
-   #attach other
-   #http://stackoverflow.com/a/11921241/5360266 https://gist.github.com/vjo/4119185
+   msg['Subject']=p.get('subject', p.get('title', ''))
+   # attach body
+   # msg.attach(MIMEText(p.get('body', p.get('text', '')), p.get('mime', 'plain'), "utf-8"))
+   msg.attach(MIMEText(p.get('body', p.get('text', '')), p.get('mime', 'html'), "utf-8"))
+   # attach other
+   #http://stackoverflow.com/a/11921241/5360266
+   #https://gist.github.com/vjo/4119185
    typeMap={
       'img':MIMEImage, 'image':MIMEImage, 'png':{'o':MIMEImage, 'm':'png'}, 'jpg':{'o':MIMEImage, 'm':'jpg'}, 'jpeg':{'o':MIMEImage, 'm':'jpeg'},
-      'audio':MIMEAudio, 'sound':MIMEAudio, 'pdf':MIMEApplication, 'mp3':{'o':MIMEAudio, 'm':'mp3'}, 'wav':{'o':MIMEAudio, 'm':'wav'},
+      'audio':MIMEAudio, 'sound':MIMEAudio, 'mp3':{'o':MIMEAudio, 'm':'mp3'}, 'wav':{'o':MIMEAudio, 'm':'wav'},
       'pdf':{'o':MIMEApplication, 'm':'pdf'},
       'xlsx':{'o':MIMEApplication,'m':'xlsx'}
    }
    cids=[]
-   for o in oGet(p,'xlsx',[]):
+   for o in p.get('xlsx', ()):
       part = MIMEBase('application', "octet-stream")
       part.set_payload(open(o['path'], "rb").read())
-      from email import encoders
       encoders.encode_base64(part)
       part.add_header('Content-Disposition', 'attachment; filename='+o['name'])
       msg.attach(part)
-   for o in oGet(p, 'attach', []):
+   for o in p.get('attach') or ():
       cid=''
       name=''
       if isDict(o):
-         oo=oGet(typeMap, oGet(o, 'type', ''), MIMEApplication)
+         oo=typeMap.get(o.get('type', ''), MIMEApplication)
          a=oo['o'](o['data'], oo['m']) if isDict(oo) else oo(o['data'])
-         cid=oGet(o, 'cid', randomEx(65536, cids, '<', '>'))
-         name=oGet(o, 'name', '')
-      else: #binary data
+         cid=o.get('cid', randomEx(None, cids, '<', '>'))
+         name=o.get('name', '')
+      else:  # binary data
          a=MIMEApplication(o)
-         cid=randomEx(65536, cids, '<', '>')
-      #if no cid, client like MAil.app (only one?) don't show the attachment
+         cid=randomEx(None, cids, '<', '>')
+      # if no cid, client like MAil.app (only one?) don't show the attachment
       if not isString(cid): cid='<%s>'%cid
       if not cid.startswith('<'): cid='<%s'%cid
       if not cid.endswith('>'): cid='%s>'%cid
@@ -2100,26 +2136,26 @@ def sendmail(p={}):
          a.add_header('Content-Disposition', 'attachment', filename=name)
          a.add_header('Content-Disposition', 'inline', filename=name)
       msg.attach(a)
-   #send
-   try:
-      isSSL=oGet(p, 'isSSL', oGet(p, 'ssl', False))
-      if isSSL: server=smtplib.SMTP_SSL(p.server, oGet(p, 'port', 465))
-      else: server=smtplib.SMTP(p.server, oGet(p, 'port', 587))
+   # sending
+   isSSL=p.get('isSSL', p.get('ssl', False))
+   if isSSL:
+      server=smtplib.SMTP_SSL(p.server, p.get('port', 465))
+   else:
+      server=smtplib.SMTP(p.server, p.get('port', 587))
+   server.ehlo()
+   if not isSSL:
+      server.starttls()
       server.ehlo()
-      if not isSSL:
-         server.starttls()
-         server.ehlo()
-      server.login(oGet(p, 'login', oGet(p, 'user', '')), oGet(p, 'password', oGet(p, 'passwd', '')))
-      server.sendmail(msg['From'], p.to, msg.as_string())
-      server.close()
-      return True
-   except Exception as e: return e
+   server.login(_login, _password)
+   server.sendmail(msg['From'], p.to, msg.as_string())
+   server.close()
+   return True
 
-def gmailSend(login, password, to, text, subject='', attach=[]):
-   return sendmail({'isSSL':True, 'server':'smtp.gmail.com', 'login':login, 'password':password, 'to':to, 'subject':subject, 'text':text, 'attach':attach})
+def gmailSend(login, password, to, text, subject='', attach=None):
+   return sendmail(isSSL=True, server='smtp.gmail.com', login=login, password=password, to=to, subject=subject, text=text, attach=attach)
 
-def yaSend(login, password, to, text, subject='', attach=[]):
-   return sendmail({'isSSL':True, 'server':'smtp.yandex.ru', 'login':login, 'password':password, 'to':to, 'subject':subject, 'text':text, 'attach':attach})
+def yaSend(login, password, to, text, subject='', attach=None):
+   return sendmail(isSSL=True, server='smtp.yandex.ru', login=login, password=password, to=to, subject=subject, text=text, attach=attach)
 
 global gmail
 gmail=magicDict({'send':gmailSend})
@@ -2137,17 +2173,22 @@ def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_config
    configPath=stunnel_configPath+('stunnel_%s_%s-%s.conf'%(name, port_https, port_http))
    logPath=stunnel_logFile%(name, port_https, port_http)
    fileWrite(configPath, config)
-   stunnel=subprocess.Popen([stunnel_exec, configPath], stderr=open(logPath, "w"))
+   process=subprocess.Popen([stunnel_exec, configPath], stderr=open(logPath, "w"))
    time.sleep(1)
-   if stunnel.poll():  #error
+   if process.poll():  #error
       s=fileGet(logPath)
       s='[!] '+strGet(s, '[!]', '')
       print '!!! ERROR creating tunnel\n', s
       return False
    #
    def closeSSLTunnel():
-      try: os.system('pkill -f "%s %s"'%(stunnel_exec, configPath))
-      except: pass  # noqa
+      # try: os.system('pkill -f "%s %s"'%(stunnel_exec, configPath))
+      # except: pass  # noqa
+      try:
+         process.terminate()
+         time.sleep(1)
+         process.kill()
+      except Exception: pass
    atexit.register(closeSSLTunnel)
    #
    def tFunc(sigId, stack, self_close=closeSSLTunnel, old=None):
@@ -2166,7 +2207,7 @@ def createSSLTunnel(port_https, port_http, sslCert='', sslKey='', stunnel_config
    #       #! Здесь нужно проверять лог на наличие критических ошибок
    #       stunnelLog=fileGet(logPath)
    # thread_checkSSLTunnel=threading.Thread(target=checkSSLTunnel).start()
-   return stunnel
+   return process
 #===================================
 def intersectWord(s, arr):
    s=s.lower()
