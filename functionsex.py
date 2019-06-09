@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import string, sys, traceback, zipfile, os, datetime, time, hmac, hashlib, math, random, re, copy, urllib2, urllib, types, decimal, inspect, subprocess, collections, _ctypes, ctypes, imp, shutil, itertools, functools, timeit, code, binascii, tempfile, errno, calendar, signal, atexit  # noqa: E501, F401
+import string, sys, traceback, zipfile, os, datetime, time, hmac, hashlib, math, random, re, copy, urllib2, urllib, types, decimal, inspect, subprocess, collections, _ctypes, ctypes, imp, shutil, itertools, functools, timeit, code, binascii, tempfile, errno, calendar, signal, atexit, platform  # noqa: E501, F401
 try:
    import simplejson as json
 except ImportError: import json
@@ -13,9 +13,7 @@ import os.path
 from urlparse import *
 from urllib import urlencode
 from decimal import *
-# import typehack
-# with typehack we can add methods to build-in classes, like in JS!
-#? see code.google.com/p/typehack/source/browse/doc/readme.txt
+
 import difflib
 from struct import Struct
 from operator import xor
@@ -30,6 +28,10 @@ from email.MIMEImage import MIMEImage
 from email.mime.audio import MIMEAudio
 from email.mime.application import MIMEApplication
 from email import encoders
+
+# import typehack
+# with typehack we can add methods to build-in classes, like in JS!
+#? see code.google.com/p/typehack/source/browse/doc/readme.txt
 
 timetime=time.time
 datetime_now=datetime.datetime.now
@@ -121,7 +123,7 @@ def ClassFactory(base, extend, fixPrivateAttrs=True):
    extend=tuple(reversed(extend))
    attrs={}
    if fixPrivateAttrs:
-      # фиксит специфичный для питона подход к приватным атрибутам, добавляя специальные приватные атрибуты, начинающиеся на `___` (например self.___test). к ним можно получить доступ из любого суб-класс, но не извне
+      # фиксит специфичный для питона подход к приватным атрибутам, добавляя поддержку специальных приватные атрибуты, начинающиеся на `___` (например self.___test). к ним можно получить доступ из любого суб-класс, но не извне
       #~ оверхед для обычных приватных атрибутов отсутствует, для новых он порядка x10, такчто не стоит использовать их в критичных по скорости участках
       #? одна из потенциальных оптимизаций: отказ от замыканий `bases`, `name`, `nCache` но пока неясно как это лучше сделать
       bases=[('_%s___'%cls.__name__, len(cls.__name__)+4) for cls in extend]
@@ -320,6 +322,18 @@ class TemporaryDirectory(object):
          # Reraise unless ENOENT: No such file or directory
          if e.errno!=errno.ENOENT: raise getErrorRaw()
 #===================================
+def get_free_disk_bytes(dirname):
+   """Return folder/drive free space in bytes."""
+   # https://stackoverflow.com/a/2372171
+   if platform.system().lower().startswith('win'):
+      free_bytes = ctypes.c_ulonglong(0)
+      ctypes.windll.kernel32.GetDiskFreeSpaceExW(ctypes.c_wchar_p(dirname), None, None, ctypes.pointer(free_bytes))
+      return free_bytes.value
+   else:
+      st = os.statvfs(dirname)
+      return st.f_bavail * st.f_frsize
+#===================================
+
 def parseCLI(argv=None, actionCaseSensitive=True, argCaseSensitive=False, argDefVal=None, argShortConv=None, smartType=True):
    """
    Parse CLI arguments.
