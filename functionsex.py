@@ -1934,11 +1934,9 @@ def arrDelta(arr, key=None):
    return dArr
 ###list.delta=arrDelta
 
-@deprecated
-def arrClear(arr, nulls=tuple(['', None])):
-   #clear array from empty elements
-   tarr=[s for s in arr if s not in nulls]
-   return tarr
+def arrClear(arr):
+   arr*=0
+   return arr
 arrClean=arrClear
 
 @deprecated
