@@ -1353,7 +1353,11 @@ def folderClear(path, alsoFiles=True, alsoDirs=False, silent=True, filter=None, 
                if filter(fp, f, False) is False: continue
             elif isBlacklist and f in filter: continue
             elif not isBlacklist and f not in filter: continue
-            shutil.rmtree(fp)
+            #! это удалит все внутренности папки, а нам нужно пройтись фильтром
+            if os.path.islink(fp):
+               os.unlink(fp)
+            else:
+               shutil.rmtree(fp)
       except Exception:
          if not silent: raise
          print getErrorInfo(fallback=True)
