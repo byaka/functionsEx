@@ -35,6 +35,7 @@ from email import encoders
 
 timetime=time.time
 datetime_now=datetime.datetime.now
+date_now=datetime.date.today
 
 mysqlEscaper=None  # библиотека pymysql блокирует патчинг через gevent, лучше импортирвоать ее на месте
 
