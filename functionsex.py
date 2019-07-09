@@ -117,8 +117,25 @@ def deprecated(f):
       return f(*args, **kwargs)
    return tmp
 #===================================
-def ClassFactory(base, extend, fixPrivateAttrs=True):
+def withMetaclass(meta, *bases):
+   """
+   Create a base class with a metaclass.
+
+   This Code taken from `six` package.
+   """
+   class metaclass(type):
+      def __new__(cls, name, this_bases, d):
+         return meta(name, bases, d)
+
+      @classmethod
+      def __prepare__(cls, name, this_bases):
+         return meta.__prepare__(name, bases)
+   return type.__new__(metaclass, 'temporary_class', (), {})
+
+def ClassFactory(base, extend, metaclass=None, fixPrivateAttrs=True):
    """ Возвращает новый класс, являющийся суб-классом от `base` и цепочки `extend`. """
+   if metaclass:
+      base=withMetaclass(metaclass, base)
    extend=(base,)+tuple(extend) if extend else ()
    name='_'.join(cls.__name__ for cls in extend)
    extend=tuple(reversed(extend))
