@@ -132,6 +132,16 @@ def withMetaclass(meta, *bases):
          return meta.__prepare__(name, bases)
    return type.__new__(metaclass, 'temporary_class', (), {})
 
+class MetaSuper(type):
+   """
+   Thanks to project `urwid` for this.
+   """
+   def __init__(cls, name, bases, d):
+      super(MetaSuper, cls).__init__(name, bases, d)
+      if hasattr(cls, "_%s__super" % name):
+         raise AttributeError("Class has same name as one of its super classes")
+      setattr(cls, "_%s__super" % name, super(cls))
+
 def ClassFactory(base, extend, metaclass=None, fixPrivateAttrs=True):
    """ Возвращает новый класс, являющийся суб-классом от `base` и цепочки `extend`. """
    if metaclass:
