@@ -117,21 +117,6 @@ def deprecated(f):
       return f(*args, **kwargs)
    return tmp
 #===================================
-def withMetaclass(meta, *bases):
-   """
-   Create a base class with a metaclass.
-
-   This Code taken from `six` package.
-   """
-   class metaclass(type):
-      def __new__(cls, name, this_bases, d):
-         return meta(name, bases, d)
-
-      @classmethod
-      def __prepare__(cls, name, this_bases):
-         return meta.__prepare__(name, bases)
-   return type.__new__(metaclass, 'temporary_class', (), {})
-
 class MetaSuper(type):
    """
    Thanks to project `urwid` for this.
@@ -142,13 +127,45 @@ class MetaSuper(type):
          raise AttributeError("Class has same name as one of its super classes")
       setattr(cls, "_%s__super" % name, super(cls))
 
+def withMetaclass(meta, base):
+   """
+   Create a base class with a metaclass.
+
+   This Code taken from `six` package.
+   """
+   # class metaclass(type):
+   #    def __new__(cls, name, this_bases, d):
+   #       print '**'
+   #       return meta(name, bases, d)
+
+   #    @classmethod
+   #    def __prepare__(cls, name, this_bases):
+   #       return meta.__prepare__(name, bases)
+   # return type.__new__(metaclass, 'temporary_class', (), {})
+   orig_vars = base.__dict__.copy()
+   slots = orig_vars.get('__slots__')
+   if slots is not None:
+      if isinstance(slots, str):
+         slots = [slots]
+      for slots_var in slots:
+         orig_vars.pop(slots_var)
+   orig_vars.pop('__dict__', None)
+   orig_vars.pop('__weakref__', None)
+   if hasattr(base, '__qualname__'):
+      orig_vars['__qualname__'] = base.__qualname__
+   return meta(base.__name__, base.__bases__, orig_vars)
+
+
+
 def ClassFactory(base, extend, metaclass=None, fixPrivateAttrs=True):
    """ Возвращает новый класс, являющийся суб-классом от `base` и цепочки `extend`. """
-   if metaclass:
-      base=withMetaclass(metaclass, base)
-   extend=(base,)+tuple(extend) if extend else ()
-   name='_'.join(cls.__name__ for cls in extend)
+   extend=(base,)+(tuple(extend) if extend else ())
    extend=tuple(reversed(extend))
+   if metaclass:
+      extend=tuple(withMetaclass(metaclass, o) for o in extend)
+
+      # base=withMetaclass(metaclass, base)()
+   name='_'.join(cls.__name__ for cls in extend)
    attrs={}
    if fixPrivateAttrs:
       # фиксит специфичный для питона подход к приватным атрибутам, добавляя поддержку специальных приватные атрибуты, начинающиеся на `___` (например self.___test). к ним можно получить доступ из любого суб-класс, но не извне
