@@ -266,39 +266,96 @@ if PY_V<2.7:
 else:
    deque2=collections.deque
 
-class CaseInsensitiveDict(dict):
+class DictInterface(dict):
+   __slots__ = ()
+   __raiseKeyError=object()
+
+   def __init__(self, mapping=(), **kwargs):
+      super(DictInterface, self).__init__(mapping, **kwargs)
+
+   def __getitem__(self, k):
+      return super(DictInterface, self).__getitem__(k)
+
+   def __setitem__(self, k, v):
+      return super(DictInterface, self).__setitem__(k, v)
+
+   def __delitem__(self, k):
+      return super(DictInterface, self).__delitem__(k)
+
+   def __contains__(self, k):
+      return super(DictInterface, self).__contains__(k)
+
+   def __copy__(self):
+      return super(DictInterface, self).copy()
+
+   def get(self, k, default=None):
+      if k in self:
+         return self[k]
+      else:
+         return default
+
+   def setdefault(self, k, default=None):
+      if k not in self:
+         self[k]=default
+      return self[k]
+
+   def pop(self, k, default=__raiseKeyError):
+      if k in self:
+         v=self[k]
+         del self[k]
+         return v
+      elif default is not self.__raiseKeyError:
+         return default
+      else:
+         raise KeyError
+
+   def update(self, mapping=(), **kwargs):
+      if hasattr(mapping, 'iteritems'): mapping=mapping.iteritems()
+      for k, v in chain(mapping, kwargs.iteritems()):
+         self[k]=v
+
+   def copy(self):
+      return self.__copy__()
+
    @classmethod
-   def _k(cls, key):
-      return key.lower() if isinstance(key, basestring) else key
+   def fromkeys(cls, keys, v=None):
+      return type(cls)({k:v for k in keys})
+
+   def __repr__(self):
+      return '{0}({1})'.format(type(self).__name__, super(DictInterface, self).__repr__())
+
+   def has_key(self, key):
+      return key in self
+
+class CaseInsensitiveDict(DictInterface):
+   @staticmethod
+   def _lower(key):
+      return key.lower() if hasattr(key, 'lower') else key
+
+   @staticmethod
+   def _process_args(part1=(), **part2):
+      if hasattr(part1, 'iteritems'): part1=part1.iteritems()
+      part2=part2.iteritems()
+      return (((k.lower() if hasattr(k, 'lower') else k), v) for k, v in chain(part1, part2))
 
    def __init__(self, *args, **kwargs):
-      super(CaseInsensitiveDict, self).__init__(*args, **kwargs)
-      self._convert_keys()
+      super(CaseInsensitiveDict, self).__init__(self._process_args(args, kwargs))
+
    def __getitem__(self, key):
-      return super(CaseInsensitiveDict, self).__getitem__(self.__class__._k(key))
+      return super(CaseInsensitiveDict, self).__getitem__(self._lower(key))
+
    def __setitem__(self, key, value):
-      super(CaseInsensitiveDict, self).__setitem__(self.__class__._k(key), value)
+      super(CaseInsensitiveDict, self).__setitem__(self._lower(key), value)
+
    def __delitem__(self, key):
-      return super(CaseInsensitiveDict, self).__delitem__(self.__class__._k(key))
+      return super(CaseInsensitiveDict, self).__delitem__(self._lower(key))
+
    def __contains__(self, key):
-      return super(CaseInsensitiveDict, self).__contains__(self.__class__._k(key))
-   def has_key(self, key):
-      return super(CaseInsensitiveDict, self).has_key(self.__class__._k(key))
-   def pop(self, key, *args, **kwargs):
-      return super(CaseInsensitiveDict, self).pop(self.__class__._k(key), *args, **kwargs)
-   def get(self, key, *args, **kwargs):
-      return super(CaseInsensitiveDict, self).get(self.__class__._k(key), *args, **kwargs)
-   def setdefault(self, key, *args, **kwargs):
-      return super(CaseInsensitiveDict, self).setdefault(self.__class__._k(key), *args, **kwargs)
-   def update(self, E={}, **F):
-      super(CaseInsensitiveDict, self).update(self.__class__(E))
-      super(CaseInsensitiveDict, self).update(self.__class__(**F))
-   def _convert_keys(self):
-      for k in list(self.keys()):
-         v = super(CaseInsensitiveDict, self).pop(k)
-         self.__setitem__(k, v)
+      return super(CaseInsensitiveDict, self).__contains__(self._lower(key))
 
 class MagicDict(dict):
+   __slots__ = ()
+
    """
    Get and set values like in Javascript (dict.<key>).
    """
