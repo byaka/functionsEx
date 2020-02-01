@@ -1,7 +1,7 @@
 window.functionsEx=window.functionsEx|| new String('fex');
 /****************************************/
 /**************functionsEx***************/
-/***/functionsEx.version=1.71;/**********/
+/***/functionsEx.version=1.73;/**********/
 /****************************************/
 /*********Copyright 2018, BYaka**********/
 /*******Email: byaka.life@gmail.com******/
@@ -501,8 +501,9 @@ functionsEx.proto_obj.make=function(key, val){
    return s;
 }
 
-functionsEx.proto_obj.update=function(o1, o2){ //!перевести на Object.assign
+functionsEx.proto_obj.update=function(o1, o2){
 //==рекурсивно обновляет обьект в соответствии с переданным
+   //! перевести на Object.assign
    if(!functionsEx.funcs.isObject(o2) || !functionsEx.funcs.isObject(o1)) return null;
    functionsEx.funcs.forMe(o2, function(k, v){
       if(functionsEx.funcs.isObject(v) && functionsEx.funcs.isObject(o1[k]))
@@ -1003,6 +1004,43 @@ functionsEx.funcs.corsMe=function(url, cb, xpath, format){
    }, '', false, 'callback', true);
 }
 
+functionsEx.funcs.loadCss=function(urlArr){
+   urlArr=functionsEx.funcs.isArray(urlArr)? urlArr: [urlArr];
+   functionsEx.funcs.forMe(urlArr, function(url){
+      var style=document.createElement("link");
+      style.id=functionsEx.proto_str.hashCode(url);
+      style.className='FEX_loaded';
+      style.rel="stylesheet";
+      style.type="text/css";
+      style.href=url;
+      document.getElementsByTagName("head")[0].appendChild(style);
+   })
+}
+
+functionsEx.funcs.loadJs=function(url, cb, queue, cbErr){
+   queue=queue|| functionsEx.funcs.loadJs.queue;
+   queue.push(url);
+   var js=document.createElement("script");
+   js.type="text/javascript";
+   js.onload=js.onreadystatechange=function(){
+      if(this.readyState && this.readyState=="loading") return; //IEfix
+      if(cb) cb(url, js);
+      queue.splice(queue.indexOf(url), 1);
+   }
+   js.onerror=function(){
+      console.log('!!!ERROR loading some resources failed', url);
+      if(cbErr) cbErr(url, js);
+   }
+   js.id=functionsEx.proto_str.hashCode(url);
+   js.className='FEX_loaded';
+   js.charset='utf-8';
+   js.src=url;
+   document.getElementsByTagName("head")[0].appendChild(js);
+}
+functionsEx.funcs.loadJs.queue=[];
+
+/*============================================================*/
+
 //? почемуто эти два метода находятся не в прототипе массива
 functionsEx.funcs.sorted=function(arr, key){
 //==возвращает отсортированный массив не изменяя исходный
@@ -1268,8 +1306,7 @@ functionsEx.proto_bool.bool=function(o){
 }
 /*============================================================*/
 functionsEx.proto_str.escape=function(o, secure){
-//==экранирует спецсимволы
-   //безопасное экранирование позволяет после вставить результат в innerHtml
+//==безопасное экранирование позволяет вставить результат в innerHtml
    //.replace(/./gm, function(s){return "&#"+s.charCodeAt(0)+";"});
    var map={
       '%':'&amp;',
@@ -1293,7 +1330,8 @@ functionsEx.proto_str.escape=function(o, secure){
    else if(secure) functionsEx.funcs.forMe(map, function(k, v){
       s=s.replace(new RegExp('\\'+k, 'g'), v);
    })
-   else s=s.replace(/[-\[\]{}()*+?.,\\^$|#\s\<\>\/]/g, "\\$&");
+   else
+      s=s.replace(/[-\[\]{}()*+?.,\\^$|#\s\<\>\/]/g, "\\$&");
    return s;
 }
 
@@ -1833,35 +1871,35 @@ functionsEx.funcs.getDOMSource=function(root){
    return s;
 }
 
-functionsEx.funcs.viewportSize=function(){
-   if(!functionsEx.funcs.viewportSize.env){
+functionsEx.funcs.getViewportSize=function(){
+   if(!functionsEx.funcs.getViewportSize.env){
       var w, d, e, b;
-      functionsEx.funcs.viewportSize.env={};
-      functionsEx.funcs.viewportSize.env.w=w=window;
-      functionsEx.funcs.viewportSize.env.d=d=document;
-      functionsEx.funcs.viewportSize.env.e=e=d.documentElement;
-      functionsEx.funcs.viewportSize.env.b=b=d.getElementsByTagName('body')[0];
+      functionsEx.funcs.getViewportSize.env={};
+      functionsEx.funcs.getViewportSize.env.w=w=window;
+      functionsEx.funcs.getViewportSize.env.d=d=document;
+      functionsEx.funcs.getViewportSize.env.e=e=d.documentElement;
+      functionsEx.funcs.getViewportSize.env.b=b=d.getElementsByTagName('body')[0];
    }else{
-      var w=functionsEx.funcs.viewportSize.env.w;
-      var d=functionsEx.funcs.viewportSize.env.d;
-      var e=functionsEx.funcs.viewportSize.env.e;
-      var b=functionsEx.funcs.viewportSize.env.b;
+      var w=functionsEx.funcs.getViewportSize.env.w;
+      var d=functionsEx.funcs.getViewportSize.env.d;
+      var e=functionsEx.funcs.getViewportSize.env.e;
+      var b=functionsEx.funcs.getViewportSize.env.b;
    }
    var x = w.innerWidth || e.clientWidth || b.clientWidth;
    var y = w.innerHeight|| e.clientHeight|| b.clientHeight;
    return [x, y];
 }
 
-functionsEx.funcs.viewportScroll=function(){
-   if(!functionsEx.funcs.viewportScroll.env){
-      functionsEx.funcs.viewportScroll.env={
+functionsEx.funcs.getViewportScroll=function(){
+   if(!functionsEx.funcs.getViewportScroll.env){
+      functionsEx.funcs.getViewportScroll.env={
          'fromWindow':typeof(window.pageYOffset)=='number',
          'fromDoc':(document.documentElement && document.documentElement.scrollTop),
       };
    }
-   if(functionsEx.funcs.viewportScroll.env.fromDoc)
+   if(functionsEx.funcs.getViewportScroll.env.fromDoc)
       var tArr1=[document.documentElement.scrollLeft, document.documentElement.scrollTop];
-   else if(functionsEx.funcs.viewportScroll.env.fromWindow)
+   else if(functionsEx.funcs.getViewportScroll.env.fromWindow)
       var tArr1=[window.pageXOffset, window.pageYOffset];
    else{
       functionsEx.funcs.printOnly('[FEX]: Cant get viewport scroll');
@@ -1873,14 +1911,29 @@ functionsEx.funcs.viewportScroll=function(){
 }
 
 //http://stackoverflow.com/a/7544757
-functionsEx.funcs.url2abs=function(url){
+functionsEx.funcs.url2abs=function(url, base){
    if(/^(https?|file|ftps?|mailto|javascript|data:image\/[^;]{2,9};):/i.test(url))
       return url; //Url is already absolute
-   var base_url = location.href.match(/^(.+)\/?(?:#.+)?$/)[0]+"/";
+   if(base){
+      if(functionsEx.funcs.isObject(base))
+         var base_url=base.url;
+      else
+         var base_url=base+'/', base=functionsEx.funcs.parseURL2(base);
+   }
+   else{
+      var base_url=window.location.href.match(/^(.+)\/?(?:#.+)?$/)[0]+"/";
+      var base={
+         'url':window.location.href,
+         'scheme':window.location.protocol.replace(':', ''),
+         'netloc':window.location.hostname,
+         'path':window.location.pathname
+      }
+   }
+
    if(url.substring(0,2) == "//")
-      return location.protocol + url;
+      return base.scheme+':' + url;
    else if(url.charAt(0) == "/")
-      return location.protocol + "//" + location.host + url;
+      return base.scheme+':' + "//" + base.netloc + url;
    else if(url.substring(0,2) == "./")
       url = "." + url;
    else if(/^\s*$/.test(url))
@@ -1896,8 +1949,11 @@ functionsEx.funcs.url2abs=function(url){
    return url;
 }
 
-functionsEx.funcs.html2abs=function(html){
+functionsEx.funcs.html2abs=function(html, base){
    functionsEx.vars.stopwatch.mark({name:'html2abs', wait:false, inMS:true});
+   if(!base) base=window.location.href;
+   if(functionsEx.funcs.isString(base))
+      base=functionsEx.funcs.parseURL2(base);
    var att = "[^-a-z0-9:._]";
    var entityEnd = "(?:;|(?!\\d))";
    var ents = {" ":"(?:\\s|&nbsp;?|&#0*32"+entityEnd+"|&#x0*20"+entityEnd+")",
@@ -1936,7 +1992,7 @@ functionsEx.funcs.html2abs=function(html){
    function by(match, group1, group2, group3){
       /* Note that this function can also be used to remove links:
        * return group1 + "javascript://" + group3; */
-      return group1 + functionsEx.funcs.url2abs(group2) + group3;
+      return group1 + functionsEx.funcs.url2abs(group2, base) + group3;
    }
    var slashRE = new RegExp(ae("/"), 'g');
    var dotRE = new RegExp(ae("."), 'g');
@@ -1944,7 +2000,7 @@ functionsEx.funcs.html2abs=function(html){
       /*Note that this function can also be used to remove links:
        * return group1 + "javascript://" + group3; */
       group2 = group2.replace(slashRE, "/").replace(dotRE, ".");
-      return group1 + functionsEx.funcs.url2abs(group2) + group3;
+      return group1 + functionsEx.funcs.url2abs(group2, base) + group3;
    }
    function cr(selector, attribute, marker, delimiter, end){
       if(typeof selector == "string") selector = new RegExp(selector, "gi");
@@ -2072,22 +2128,21 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
    solveConflicts=solveConflicts===false? false: true;
    var functionsEx_import=_import|| functionsEx['import'];
    if(!functionsEx.funcs.isObject(functionsEx_import))
-      functionsEx_import={'vars':functionsEx_import, 'funcs':functionsEx_import, 'proto':functionsEx_import};
+      functionsEx_import={'vars':functionsEx_import, 'funcs':functionsEx_import, 'proto':functionsEx_import, 'protoSafe':functionsEx_import};
    var functionsEx_scope=_scope|| functionsEx['scope'];
    var scopeIsWindow=functionsEx_scope===window;
    if(functionsEx_scope && functionsEx.funcs.isObject(functionsEx_import)){
       if(functionsEx_scope.functionsex_imported_into_scope)
-         return console.log('FEX: given scope contain param "functionsex_imported_into_scope", import ignored!');
+         return console.log('FEX: given scope contains "functionsex_imported_into_scope", import aborted!');
    //==Variables
       if(functionsEx_import.vars){
          functionsEx.funcs.forMe(functionsEx.vars, function(k, v){
             if(functionsEx.funcs.isArray(functionsEx_import.vars) && !functionsEx.funcs.inOf(functionsEx_import.vars, k)) return;
             if(k in functionsEx_scope){
                if(solveConflicts && scopeIsWindow){
-                  // console.log('! FEX: conflicting name "'+k+'", overloaded');
-               }
-               else if(solveConflicts){
-                  // console.log('! FEX: conflicting name "'+k+'", changed to "fex_'+k+'"');
+                  console.log('! FEX: conflicting name "'+k+'", overloaded');
+               }else if(solveConflicts){
+                  console.log('! FEX: conflicting name "'+k+'", changed to "fex_'+k+'"');
                   k='fex_'+k;
                }else
                   return console.log('!!! FEX: conflicting name "'+k+'", skipped');
@@ -2101,10 +2156,9 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             if(functionsEx.funcs.isArray(functionsEx_import.funcs) && !functionsEx.funcs.inOf(functionsEx_import.funcs, k)) return;
             if(k in functionsEx_scope){
                if(solveConflicts && scopeIsWindow){
-                  // console.log('! FEX: conflicting name "'+k+'", overloaded');
-               }
-               else if(solveConflicts){
-                  // console.log('! FEX: conflicting name "'+k+'", changed to "fex_'+k+'"');
+                  console.log('! FEX: conflicting name "'+k+'", overloaded');
+               }else if(solveConflicts){
+                  console.log('! FEX: conflicting name "'+k+'", changed to "fex_'+k+'"');
                   k='fex_'+k;
                }else
                   return console.log('!!! FEX: conflicting name "'+k+'", skipped');
@@ -2112,15 +2166,30 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             functionsEx_scope[k]=v;
          });
       }
+   //==Safe-prototypes
+      functionsEx.funcs.forMe(['proto_str', 'proto_arr', 'proto_num', 'proto_bool', 'proto_obj'], function(k){
+         if(functionsEx_import.protoSafe || functionsEx_import[k+'_safe']){
+            var v=functionsEx[k];
+            if(k in functionsEx_scope){
+               if(solveConflicts && scopeIsWindow){
+                  console.log('! FEX: conflicting name "'+k+'", overloaded');
+               }else if(solveConflicts){
+                  console.log('! FEX: conflicting name "'+k+'", changed to "fex_'+k+'"');
+                  k='fex_'+k;
+               }else
+                  return console.log('!!! FEX: conflicting name "'+k+'", skipped');
+            }
+            functionsEx_scope[k]=v;
+         }
+      })
    //==String.prototype
       if(functionsEx_import.proto || functionsEx_import.proto_str){
          functionsEx.funcs.forMe(functionsEx.proto_str, function(k, v){
             if(functionsEx.funcs.isArray(functionsEx_import.proto_str) && !functionsEx.funcs.inOf(functionsEx_import.proto_str, k)) return;
             if(k in String.prototype){
                if(solveConflicts){
-                  // console.log('! FEX: conflicting name in String.prototype "'+k+'", overloaded');
-               }
-               else
+                  console.log('! FEX: conflicting name in String.prototype "'+k+'", overloaded');
+               }else
                   return console.log('!!! FEX: conflicting name in String.prototype "'+k+'", skipped');
             }
             String.prototype[k]=(function(){
@@ -2135,9 +2204,8 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             if(functionsEx.funcs.isArray(functionsEx_import.proto_arr) && !functionsEx.funcs.inOf(functionsEx_import.proto_arr, k)) return;
             if(k in Array.prototype){
                if(solveConflicts){
-                  // console.log('! FEX: conflicting name in Array.prototype "'+k+'", overloaded');
-               }
-               else
+                  console.log('! FEX: conflicting name in Array.prototype "'+k+'", overloaded');
+               }else
                   return console.log('!!! FEX: conflicting name in Array.prototype "'+k+'", skipped');
             }
             Array.prototype[k]=(function(){
@@ -2152,9 +2220,8 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             if(functionsEx.funcs.isArray(functionsEx_import.proto_num) && !functionsEx.funcs.inOf(functionsEx_import.proto_num, k)) return;
             if(k in Number.prototype){
                if(solveConflicts){
-                  // console.log('! FEX: conflicting name in Number.prototype "'+k+'", overloaded');
-               }
-               else
+                  console.log('! FEX: conflicting name in Number.prototype "'+k+'", overloaded');
+               }else
                   return console.log('!!! FEX: conflicting name in Number.prototype "'+k+'", skipped');
             }
             Number.prototype[k]=(function(){
@@ -2169,9 +2236,8 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             if(functionsEx.funcs.isArray(functionsEx_import.proto_bool) && !functionsEx.funcs.inOf(functionsEx_import.proto_bool, k)) return;
             if(k in Boolean.prototype){
                if(solveConflicts){
-                  // console.log('! FEX: conflicting name in Boolean.prototype "'+k+'", overloaded');
-               }
-               else
+                  console.log('! FEX: conflicting name in Boolean.prototype "'+k+'", overloaded');
+               }else
                   return console.log('!!! FEX: conflicting name in Boolean.prototype "'+k+'", skipped');
             }
             Boolean.prototype[k]=(function(){
@@ -2186,9 +2252,8 @@ functionsEx.importNow=function(_scope, _import, solveConflicts){
             if(functionsEx.funcs.isArray(functionsEx_import.proto_obj) && !functionsEx.funcs.inOf(functionsEx_import.proto_obj, k)) return;
             if(k in Object){
                if(solveConflicts){
-                  // console.log('! FEX: conflicting name in Object "'+k+'", overloaded');
-               }
-               else
+                  console.log('! FEX: conflicting name in Object "'+k+'", overloaded');
+               }else
                   return console.log('!!! FEX: conflicting name in Object "'+k+'", skipped');
             }
             Object[k]=v;
@@ -2229,7 +2294,7 @@ functionsEx.funcs.ie_arrIndexOf=function(arr, searchElement, fromIndex){
    if(n>=len) return -1;
    var k=Math.max(n>=0? n: len-Math.abs(n), 0);
    while(k<len){
-      if(k in o && o[k]===searchElement) return k;
+      if(o[k]===searchElement) return k;
       k++;
    }
    return -1;
@@ -2240,36 +2305,3 @@ if(!String.prototype.trim){
       return this.replace(/^\s+|\s+$/g, '');
    }
 }
-
-// if(!Array.prototype.indexOf){
-//    Array.prototype.indexOf=function(searchElement, fromIndex){
-//       var k;
-//       if(null===this|| undefined===this){
-//          throw new TypeError('"this" is null or not defined');
-//       }
-//       var O=Object(this);
-//       var len=O.length>>>0;
-//       if(len===0) return -1;
-//       var n=+fromIndex|| 0;
-//       if(Math.abs(n)===Infinity) n=0;
-//       if(n>=len) return -1;
-//       k=Math.max(n>=0? n: len-Math.abs(n), 0);
-//       while(k<len){
-//          if(k in O && O[k]===searchElement) return k;
-//          k++;
-//       }
-//       return -1;
-//    };
-// }
-
-
-// function TEST_GET(url){
-// var query = 'select * from html where url="'+url+'" and xpath="*"';
-// var url = 'https://query.yahooapis.com/v1/public/yql?q='+encodeURI(query)+'&format=xml&callback=callback';
-// var script = document.createElement('script');
-// script.src = url;
-// document.body.appendChild(script);
-// function callback(data) {
-//     console.log(data); //сам текст ответа находится в data.result[0]
-// }
-// }

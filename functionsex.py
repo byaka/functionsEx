@@ -117,6 +117,37 @@ def deprecated(f):
       return f(*args, **kwargs)
    return tmp
 #===================================
+class MetaProfiler(type):
+   """
+   Meta-class that wraps all methods and calcs execution-time and success\exception ratio.
+   """
+   def __new__(cls, className, bases, classDict):
+      if not classDict.get('_noCallTiming', False):
+         classDict['_MTPRFL_callTiming']=defaultdict(lambda: [0., 0, 0])
+         for k, v in classDict.items():
+            if callable(v) and not getattr(v, '_noCallTiming', False):
+               classDict[k]=cls.wrap(classDict, v)
+      return type.__new__(cls, className, bases, classDict)
+
+   @classmethod
+   def wrap(cls, classDict, f):
+      o=classDict['_MTPRFL_callTiming'][f.__name__]
+      @functools.wraps(f)
+      def fNew(self, *args, **kwargs):
+         t=timetime()
+         try:
+            res=f(self, *args, **kwargs)
+            o[1]+=1
+            o[0]+=timetime()-t
+         except Exception as e:
+            o[2]+=1
+            o[0]+=timetime()-t
+            # raise e from None
+            raise e
+         return res
+      fNew._original=f
+      return fNew
+#===================================
 class MetaSuper(type):
    """
    Thanks to project `urwid` for this.
@@ -133,15 +164,6 @@ def withMetaclass(meta, base):
 
    This Code taken from `six` package.
    """
-   # class metaclass(type):
-   #    def __new__(cls, name, this_bases, d):
-   #       print '**'
-   #       return meta(name, bases, d)
-
-   #    @classmethod
-   #    def __prepare__(cls, name, this_bases):
-   #       return meta.__prepare__(name, bases)
-   # return type.__new__(metaclass, 'temporary_class', (), {})
    orig_vars = base.__dict__.copy()
    slots = orig_vars.get('__slots__')
    if slots is not None:
@@ -155,20 +177,16 @@ def withMetaclass(meta, base):
       orig_vars['__qualname__'] = base.__qualname__
    return meta(base.__name__, base.__bases__, orig_vars)
 
-
-
 def ClassFactory(base, extend, metaclass=None, fixPrivateAttrs=True):
    """ Возвращает новый класс, являющийся суб-классом от `base` и цепочки `extend`. """
    extend=(base,)+(tuple(extend) if extend else ())
    extend=tuple(reversed(extend))
    if metaclass:
       extend=tuple(withMetaclass(metaclass, o) for o in extend)
-
-      # base=withMetaclass(metaclass, base)()
    name='_'.join(cls.__name__ for cls in extend)
    attrs={}
    if fixPrivateAttrs:
-      # фиксит специфичный для питона подход к приватным атрибутам, добавляя поддержку специальных приватные атрибуты, начинающиеся на `___` (например self.___test). к ним можно получить доступ из любого суб-класс, но не извне
+      # фиксит специфичный для питона подход к инкапсуляции атрибутов, добавляя поддержку специальных приватные атрибуты, начинающиеся на `___` (например self.___test). к ним можно получить доступ из любого суб-класс, но не извне
       #~ оверхед для обычных приватных атрибутов отсутствует, для новых он порядка x10, такчто не стоит использовать их в критичных по скорости участках
       #? одна из потенциальных оптимизаций: отказ от замыканий `bases`, `name`, `nCache` но пока неясно как это лучше сделать
       bases=[('_%s___'%cls.__name__, len(cls.__name__)+4) for cls in extend]
@@ -288,6 +306,33 @@ class DictInterface(dict):
    def __copy__(self):
       return super(DictInterface, self).copy()
 
+   def __iter__(self):
+      return super(DictInterface, self).__iter__()
+
+   def __len__(self):
+      return super(DictInterface, self).__len__()
+
+   def __repr__(self):
+      return '{0}({1})'.format(type(self).__name__, super(DictInterface, self).__repr__())
+
+   def iterkeys(self):
+      return self.__iter__()
+
+   def iteritems(self):
+      return ((k, self[k]) for k in self.__iter__())
+
+   def values(self):
+      return (self[k] for k in self.__iter__())
+
+   def keys(self):
+      return tuple(self.iterkeys())
+
+   def items(self):
+      return tuple(self.iteritems())
+
+   def values(self):
+      return tuple(self.itervalues())
+
    def get(self, k, default=None):
       if k in self:
          return self[k]
@@ -321,9 +366,6 @@ class DictInterface(dict):
    def fromkeys(cls, keys, v=None):
       return type(cls)({k:v for k in keys})
 
-   def __repr__(self):
-      return '{0}({1})'.format(type(self).__name__, super(DictInterface, self).__repr__())
-
    def has_key(self, key):
       return key in self
 
@@ -352,6 +394,8 @@ class CaseInsensitiveDict(DictInterface):
 
    def __contains__(self, key):
       return super(CaseInsensitiveDict, self).__contains__(self._lower(key))
+
+   #! нужно добавить обработку итератора
 
 class MagicDict(dict):
    __slots__ = ()
