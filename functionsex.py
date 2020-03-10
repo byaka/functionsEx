@@ -107,7 +107,7 @@ def deprecated(f):
                p='%s/functionsex_deprecatedCalls.txt'%getScriptPath(f=__file__)
                m='%s:%s <- %s:%s\n'%(f.func_code.co_filename, f.__name__, module, name)
                fileAppend(p, m)
-            except Exception, e:
+            except Exception as e:
                print '! Cant log deprecated call to "%s": %s'%(p, e)
             if consoleIsTerminal():
                msg=consoleColor.bold+consoleColor.warning+msg+consoleColor.end
@@ -116,6 +116,34 @@ def deprecated(f):
          print '! You call deprecated function, but decorator failed:', e
       return f(*args, **kwargs)
    return tmp
+#===================================
+class MetaFinalizer(type):
+   """
+   Meta-class which implements pattern Finalizer.
+   """
+   __PROTECTED=object()
+
+   def __new__(cls, className, bases, classDict):
+      protected=set(key
+               for base in bases
+               for key, val in vars(base).items()
+               if callable(val) and cls.__is_protected(val))
+      tArr=tuple(key for key in classDict if key in protected)
+      if tArr:
+         raise RuntimeError('This methods are finalized and may not be overridden: {0}'.format(', '.join(tArr)))
+      return super(MetaFinalizer, cls).__new__(cls, className, bases, classDict)
+
+   @classmethod
+   def __is_protected(cls, method):
+      try:
+         return method.__PROTECTED is cls.__PROTECTED
+      except AttributeError:
+         return False
+
+   @classmethod
+   def protect(cls, method):
+      method.__PROTECTED=cls.__PROTECTED
+      return method
 #===================================
 class MetaProfiler(type):
    """
